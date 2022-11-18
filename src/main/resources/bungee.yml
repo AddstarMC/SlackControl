@@ -1,0 +1,4 @@
+name: SlackControl
+main: au.com.addstar.slackcontrol.SlackControl
+version: 1.0
+author: add5tar

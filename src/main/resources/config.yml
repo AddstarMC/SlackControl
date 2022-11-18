@@ -1,0 +1,7 @@
+slack:
+  # The valid bot token value starting with "xoxb-" in your development workspace.
+  # To obtain a bot token, install your Slack App that has a bot user to your development workspace.
+  # Note the bot must have "app_mentions:read" scope.
+  bot_token: 'xoxb-'
+  app_token: 'xapp-'
+  warn_channel: '#warns-bans'
