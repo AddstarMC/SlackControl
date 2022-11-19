@@ -16,6 +16,7 @@ public class SlackControl extends Plugin {
                 getLogger().info("SlackControl enabled.");
             } else {
                 getLogger().info("SlackControl disabled.");
+                return;
             }
 
             gesuit = new geSuitListener(this);
