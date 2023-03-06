@@ -13,6 +13,8 @@ public class Config {
     String slack_app_token;
     String slack_warn_channel;
 
+    Boolean debug_mode = false;
+
     public Config(SlackControl plugin) {
         this.plugin = plugin;
     }
@@ -47,6 +49,7 @@ public class Config {
             slack_bot_token = config.getString("slack.bot_token", "");
             slack_app_token = config.getString("slack.app_token", "");
             slack_warn_channel = config.getString("slack.warn_channel", "");
+            debug_mode = config.getBoolean("debug", false);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -64,5 +67,12 @@ public class Config {
 
     public String getSlackWarnChannel() {
         return slack_warn_channel;
+    }
+
+    public Boolean getDebugMode() {
+        return debug_mode;
+    }
+    public void setDebugMode(Boolean debug_mode) {
+        this.debug_mode = debug_mode;
     }
 }

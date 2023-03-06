@@ -6,14 +6,13 @@ import au.com.addstar.slackcontrol.commands.WhoCommand;
 import au.com.addstar.slackcontrol.objects.BotResponse;
 import au.com.addstar.slackcontrol.objects.UserCommand;
 import com.slack.api.Slack;
-import com.slack.api.app_backend.events.payload.EventsApiPayload;
+import com.slack.api.app_backend.slash_commands.response.SlashCommandResponse;
 import com.slack.api.bolt.App;
 import com.slack.api.bolt.AppConfig;
 import com.slack.api.bolt.context.builtin.EventContext;
 import com.slack.api.bolt.context.builtin.SlashCommandContext;
-import com.slack.api.bolt.model.Bot;
-import com.slack.api.bolt.request.builtin.SlashCommandRequest;
 import com.slack.api.bolt.socket_mode.SocketModeApp;
+import com.slack.api.bolt.util.BuilderConfigurator;
 import com.slack.api.methods.MethodsClient;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
@@ -55,7 +54,7 @@ public class SlackApp {
 
     public boolean initApp() throws Exception {
         if (config.slack_bot_token.isEmpty()) {
-            plugin.getLogger().warning("Slack bot_token has not been set");
+            plugin.warnMsg("Slack bot_token has not been set");
             return false;
         }
 
@@ -68,7 +67,7 @@ public class SlackApp {
 
         // Using slash command (/mcbot)
         app.command("/mcbot", (req, ctx) -> {
-            plugin.getLogger().info("Received command"
+            plugin.logMsg("Received command"
                     + " from " + req.getPayload().getUserName()
                     + " in #" + req.getPayload().getChannelName()
                     + ": " + req.getPayload().getCommand()
@@ -82,7 +81,7 @@ public class SlackApp {
         // Message sent via DM to the bot
         // https://api.slack.com/events/message
         app.event(MessageEvent.class, (req, ctx) -> {
-            plugin.getLogger().info("Received MessageEvent"
+            plugin.logMsg("Received MessageEvent"
                     + " from " + req.getEvent().getParentUserId()
                     + " in " + req.getEvent().getChannel()
                     + ": " + req.getEvent().getText()
@@ -95,7 +94,7 @@ public class SlackApp {
         // Mentioning the bot in a channel
         // https://api.slack.com/events/app_mention
         app.event(AppMentionEvent.class, (req, ctx) -> {
-            plugin.getLogger().info("Received AppMentionEvent"
+            plugin.logMsg("Received AppMentionEvent"
                     + " from " + req.getEvent().getUser()
                     + " in " + req.getEvent().getChannel()
                     + ": " + req.getEvent().getText()
@@ -145,9 +144,10 @@ public class SlackApp {
 
                 // Attempt to send message to slack
                 try {
+                    plugin.debugMsg("Doing chatPostMessage()");
                     ChatPostMessageResponse response = plugin.getMethodsClient().chatPostMessage(request);
                     if (!response.isOk()) {
-                        plugin.getLogger().warning("Slack message error: " + response.getError());
+                        plugin.warnMsg("Slack message error: " + response.getError());
                     }
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -167,11 +167,11 @@ public class SlackApp {
 
         // Strip everything up to (and including) the bot ping
         // We only want anything after the @ mention
-        plugin.getLogger().info("Old Message: \"" + fullmsg + "\"");
+        //debugMsg("Old Message: \"" + fullmsg + "\"");
         fullmsg = fullmsg.replaceFirst("<@[0-9A-Z]*>[\\s]*", "")
                 .replaceAll(" +", " ")
                 .trim();
-        plugin.getLogger().info("New Message: \"" + fullmsg + "\"");
+        //debugMsg("New Message: \"" + fullmsg + "\"");
 
         int pos = fullmsg.indexOf(" ");
         if (pos == -1) {
@@ -181,8 +181,8 @@ public class SlackApp {
             result.setArgs(fullmsg.substring(pos+1));
         }
 
-        plugin.getLogger().info("Command  : " + result.getCmd());
-        plugin.getLogger().info("Arguments: " + result.getArgs());
+        plugin.debugMsg("Command  : " + result.getCmd());
+        plugin.debugMsg("Arguments: " + result.getArgs());
         return result;
     }
 
@@ -193,23 +193,54 @@ public class SlackApp {
 
     private void handleCommand(UserCommand cmd, String user, SlashCommandContext ctx) {
         BotResponse resp = handleCommand(cmd, user);
+        plugin.debugMsg("handleCommand1: " + resp.getType());
         try {
-            ctx.respond(resp.text);
+            // Send relevant response
+            switch (resp.getType()) {
+                case TEXT_ONLY -> ctx.respond(SlashCommandResponse.builder().text(resp.text).build());
+                case BLOCKS_ONLY -> ctx.respond(SlashCommandResponse.builder().blocks(resp.blocks).build());
+                case TEXT_AND_BLOCKS -> ctx.respond(SlashCommandResponse.builder()
+                        .text(resp.text)
+                        .blocks(resp.blocks)
+                        .build());
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
     private void handleCommand(UserCommand cmd, String user, EventContext ctx, boolean direct) {
         BotResponse resp = handleCommand(cmd, user);
+        plugin.debugMsg("handleCommand2: " + resp.getType());
         try {
-            if (direct) {
-                ctx.say(resp.text);
-            } else {
-                ctx.say("<@"+user+"> " + resp.text);
+            // Responses in channels should ping the sender
+            if (!direct) {
+                resp.text = "<@"+user+"> " + resp.text;
+            }
+
+            // Send relevant response
+            ChatPostMessageResponse result = null;
+            BuilderConfigurator<ChatPostMessageRequest.ChatPostMessageRequestBuilder> bc = req -> {
+                req.attachments(resp.attachments).blocks(resp.blocks).text(resp.text);
+                return req;
+            };
+            ctx.say(bc);
+
+            switch (resp.getType()) {
+                case TEXT_ONLY -> result = ctx.say(resp.text);
+                // The blocks_only here causes a warning about top-level text missing
+                // Not yet sure how to fix it but only happens in specific circumstances
+                case BLOCKS_ONLY -> result = ctx.say(resp.blocks);
+                case TEXT_AND_BLOCKS -> result = ctx.say(resp.text, resp.blocks);
+                default -> plugin.warnMsg("Unknown message type: " + resp.getType());
+            }
+            if ((result != null) && (!result.isOk())) {
+                plugin.warnMsg("Slack error: " + result.getError());
             }
         } catch (IOException e) {
+            plugin.getLogger().warning(e.getMessage());
             throw new RuntimeException(e);
         } catch (SlackApiException e) {
+            plugin.getLogger().warning(e.getMessage());
             throw new RuntimeException(e);
         }
     }
@@ -217,11 +248,17 @@ public class SlackApp {
     private BotResponse handleCommand(UserCommand cmd, String user) {
         ISlackCommandHandler handler = getCmdHandler(cmd);
         if (handler != null) {
-            BotResponse resp = handler.commandHandler(user, cmd);
-            if (resp == null) {
+            try {
+                BotResponse resp = handler.commandHandler(user, cmd);
+                if (resp == null) {
+                    return new BotResponse("Sorry, the command handling failed. Try again later.");
+                }
+                return resp;
+            } catch (Exception e) {
+                plugin.warnMsg("Error handling command!");
+                e.printStackTrace();
                 return new BotResponse("Sorry, the command handling failed. Try again later.");
             }
-            return resp;
         } else {
             return new BotResponse("Sorry, I don't understand.");
         }
