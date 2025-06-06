@@ -87,7 +87,7 @@
                     <artifactSet>
                         <excludes>
                             <exclude>META-INF/MANIFEST.MF</exclude>
-                            <exlclude>ETA-INF.versions.9.module-info</exlclude>
+                            <exclude>ETA-INF.versions.9.module-info</exclude>
                         </excludes>
                         <includes>
                             <include>com.slack.api:bolt</include>

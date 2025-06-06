@@ -32,13 +32,11 @@ public class Config {
 
         // Copy default config if it doesn't already exist
         if (!configFile.exists()) {
-            FileOutputStream outputStream = null;
-            try {
-                outputStream = new FileOutputStream(configFile);
-                InputStream in = plugin.getResourceAsStream("config.yml");
-                in.transferTo(outputStream); // Throws IOException
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
+            try (InputStream in = plugin.getResourceAsStream("config.yml");
+                 OutputStream out = new FileOutputStream(configFile)) {
+                if (in != null) {
+                    in.transferTo(out); // Throws IOException
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

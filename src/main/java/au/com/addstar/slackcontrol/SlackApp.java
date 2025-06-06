@@ -217,23 +217,11 @@ public class SlackApp {
                 resp.text = "<@"+user+"> " + resp.text;
             }
 
-            // Send relevant response
-            ChatPostMessageResponse result = null;
-            BuilderConfigurator<ChatPostMessageRequest.ChatPostMessageRequestBuilder> bc = req -> {
-                req.attachments(resp.attachments).blocks(resp.blocks).text(resp.text);
-                return req;
-            };
-            ctx.say(bc);
-
-            switch (resp.getType()) {
-                case TEXT_ONLY -> result = ctx.say(resp.text);
-                // The blocks_only here causes a warning about top-level text missing
-                // Not yet sure how to fix it but only happens in specific circumstances
-                case BLOCKS_ONLY -> result = ctx.say(resp.blocks);
-                case TEXT_AND_BLOCKS -> result = ctx.say(resp.text, resp.blocks);
-                default -> plugin.warnMsg("Unknown message type: " + resp.getType());
-            }
-            if ((result != null) && (!result.isOk())) {
+            // Send relevant response only once
+            BuilderConfigurator<ChatPostMessageRequest.ChatPostMessageRequestBuilder> bc = req ->
+                    req.attachments(resp.attachments).blocks(resp.blocks).text(resp.text);
+            ChatPostMessageResponse result = ctx.say(bc);
+            if (!result.isOk()) {
                 plugin.warnMsg("Slack error: " + result.getError());
             }
         } catch (IOException e) {
