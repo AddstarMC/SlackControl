@@ -1,36 +1,56 @@
 package au.com.addstar.slackcontrol.commands;
 
 import au.com.addstar.slackcontrol.SlackControl;
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.CommandSender;
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.plugin.Command;
+import com.velocitypowered.api.command.SimpleCommand;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
-public class SlackControlCommand extends Command {
-    private SlackControl plugin;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+public class SlackControlCommand implements SimpleCommand {
+
+    private final SlackControl plugin;
+
     public SlackControlCommand(SlackControl plugin) {
-        super("!slackcontrol", "slackcontrol.command", "slackcontrol");
         this.plugin = plugin;
     }
 
     @Override
-    public void execute(CommandSender sender, String[] args) {
+    public void execute(Invocation invocation) {
+        var source = invocation.source();
+        String[] args = invocation.arguments();
+
         try {
             if (args.length == 0) {
-                sender.sendMessage(TextComponent.fromLegacyText("Expected sub command"));
+                source.sendMessage(Component.text("Expected sub command"));
                 return;
-            } else {
-                switch (args[0].toLowerCase())
-                {
-                    case "debug":
-                        Boolean newmode = !plugin.getConfig().getDebugMode();
-                        plugin.getConfig().setDebugMode(newmode);
-                        sender.sendMessage(TextComponent.fromLegacyText("SlackControl debug is " + newmode));
-                        break;
+            }
+            switch (args[0].toLowerCase()) {
+                case "debug" -> {
+                    boolean newMode = !plugin.getConfig().getDebugMode();
+                    plugin.getConfig().setDebugMode(newMode);
+                    source.sendMessage(Component.text("SlackControl debug is " + newMode));
                 }
+                default -> source.sendMessage(Component.text("Unknown sub command"));
             }
         } catch (Exception e) {
-            sender.sendMessage(TextComponent.fromLegacyText(ChatColor.RED + e.getMessage()));
+            source.sendMessage(Component.text(e.getMessage(), NamedTextColor.RED));
         }
+    }
+
+    @Override
+    public boolean hasPermission(Invocation invocation) {
+        return invocation.source().hasPermission("slackcontrol.command");
+    }
+
+    @Override
+    public List<String> suggest(Invocation invocation) {
+        return List.of();
+    }
+
+    @Override
+    public CompletableFuture<List<String>> suggestAsync(Invocation invocation) {
+        return CompletableFuture.completedFuture(List.of());
     }
 }

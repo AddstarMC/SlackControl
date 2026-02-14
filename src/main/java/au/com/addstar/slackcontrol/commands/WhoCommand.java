@@ -1,28 +1,28 @@
 package au.com.addstar.slackcontrol.commands;
+
 import au.com.addstar.slackcontrol.SlackControl;
 import au.com.addstar.slackcontrol.objects.BotResponse;
 import au.com.addstar.slackcontrol.objects.UserCommand;
-import com.google.common.base.Joiner;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.Lists;
 import com.slack.api.model.block.ContextBlock;
 import com.slack.api.model.block.ContextBlockElement;
 import com.slack.api.model.block.DividerBlock;
-import com.slack.api.model.block.LayoutBlock;
 import com.slack.api.model.block.composition.MarkdownTextObject;
-import net.md_5.bungee.api.ProxyServer;
-import net.md_5.bungee.api.connection.ProxiedPlayer;
+import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.server.RegisteredServer;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import static au.com.addstar.slackcontrol.utils.SlackUtils.makeSectionBlock;
 
 public class WhoCommand implements ISlackCommandHandler {
-    SlackControl plugin;
+
+    private final SlackControl plugin;
+
     public WhoCommand(SlackControl plugin) {
         this.plugin = plugin;
     }
@@ -30,47 +30,37 @@ public class WhoCommand implements ISlackCommandHandler {
     @Override
     public BotResponse commandHandler(String user, UserCommand cmd) {
         plugin.debugMsg("Who command called");
-        Collection<ProxiedPlayer> players = ProxyServer.getInstance().getPlayers();
+        Collection<Player> players = plugin.getProxy().getAllPlayers();
         BotResponse resp = new BotResponse();
-        List<LayoutBlock> blocks = new ArrayList<>();
 
         List<ContextBlockElement> elements = new ArrayList<>();
         elements.add(MarkdownTextObject.builder()
-                .text(":bookmark_tabs: *Players online:* " + players.size())
-                .build());
+            .text(":bookmark_tabs: *Players online:* " + players.size())
+            .build());
         resp.blocks.add(ContextBlock.builder().elements(elements).build());
         resp.blocks.add(DividerBlock.builder().build());
 
-        // Collect groups of players by server
-        ListMultimap<String, String> groups = ArrayListMultimap.create();
-        for (ProxiedPlayer player : players)
-        {
-            String serverName;
-            if (player.getServer() != null) {
-                serverName = player.getServer().getInfo().getName();
-                plugin.debugMsg(serverName + "/" + player.getName());
-            } else {
-                serverName = "Unknown";
-            }
-
-            groups.put(serverName, player.getDisplayName());
+        // Group players by server (sorted by server name)
+        TreeMap<String, List<String>> groups = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        for (Player player : players) {
+            String serverName = player.getCurrentServer()
+                .map(conn -> conn.getServerInfo().getName())
+                .orElse("Unknown");
+            plugin.debugMsg(serverName + "/" + player.getUsername());
+            groups.computeIfAbsent(serverName, k -> new ArrayList<>()).add(player.getUsername());
         }
 
-        // Construct formatted lines of players per server
         List<String> lines = new ArrayList<>();
-        List<String> sortedKeys = Lists.newArrayList(groups.keySet());
-        Collections.sort(sortedKeys);
-        for(String key : sortedKeys)
-        {
-            List<String> groupPlayers = Lists.newArrayList(groups.get(key));
-            Collections.sort(groupPlayers);
-            lines.add(String.format(":black_small_square: *%s* (%d): ", key, groupPlayers.size()) +
-                    Joiner.on(", ").join(groupPlayers));
+        for (var entry : groups.entrySet()) {
+            List<String> names = entry.getValue();
+            names.sort(String.CASE_INSENSITIVE_ORDER);
+            lines.add(String.format(":black_small_square: *%s* (%d): %s",
+                entry.getKey(), names.size(), String.join(", ", names)));
         }
 
-        // Only show server list if someone is online
-        if (lines.size() > 0)
-            resp.blocks.add(makeSectionBlock(Joiner.on("\n").join(lines)));
+        if (!lines.isEmpty()) {
+            resp.blocks.add(makeSectionBlock(String.join("\n", lines)));
+        }
 
         return resp;
     }

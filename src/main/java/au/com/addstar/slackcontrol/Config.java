@@ -1,60 +1,85 @@
 package au.com.addstar.slackcontrol;
 
-import net.md_5.bungee.config.Configuration;
-import net.md_5.bungee.config.ConfigurationProvider;
-import net.md_5.bungee.config.YamlConfiguration;
+import org.yaml.snakeyaml.Yaml;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 
 public class Config {
-    Configuration config;
-    SlackControl plugin;
-    String slack_bot_token;
-    String slack_app_token;
-    String slack_warn_channel;
-
-    Boolean debug_mode = false;
+    private final SlackControl plugin;
+    private String slack_bot_token;
+    private String slack_app_token;
+    private String slack_warn_channel;
+    private Boolean debug_mode = false;
 
     public Config(SlackControl plugin) {
         this.plugin = plugin;
     }
 
     public boolean loadConfig() {
-        File basedir = plugin.getDataFolder();
-        String conffile = "config.yml";
+        Path dataDirectory = plugin.getDataDirectory();
+        Path configFile = dataDirectory.resolve("config.yml");
 
-        // Create plugin config folder if it doesn't exist
-        if (!basedir.exists()) {
-            plugin.getLogger().info("Created config folder: " + basedir.mkdir());
+        try {
+            Files.createDirectories(dataDirectory);
+        } catch (IOException e) {
+            throw new RuntimeException("Could not create config directory", e);
         }
 
-        File configFile = new File(basedir, "config.yml");
-
-        // Copy default config if it doesn't already exist
-        if (!configFile.exists()) {
-            FileOutputStream outputStream = null;
-            try {
-                outputStream = new FileOutputStream(configFile);
-                InputStream in = plugin.getResourceAsStream("config.yml");
-                in.transferTo(outputStream); // Throws IOException
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
+        if (!Files.exists(configFile)) {
+            try (InputStream in = plugin.getResourceAsStream("config.yml")) {
+                if (in != null) {
+                    Files.copy(in, configFile);
+                }
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new RuntimeException("Could not copy default config", e);
             }
         }
 
-        try {
-            config = ConfigurationProvider.getProvider(YamlConfiguration.class).load(new File(basedir.getAbsolutePath(), conffile));
-            slack_bot_token = config.getString("slack.bot_token", "");
-            slack_app_token = config.getString("slack.app_token", "");
-            slack_warn_channel = config.getString("slack.warn_channel", "");
-            debug_mode = config.getBoolean("debug", false);
+        try (InputStream in = Files.newInputStream(configFile)) {
+            Yaml yaml = new Yaml();
+            @SuppressWarnings("unchecked")
+            Map<String, Object> root = yaml.load(in);
+            if (root == null) root = Map.of();
+
+            slack_bot_token = getString(root, "slack.bot_token", "");
+            slack_app_token = getString(root, "slack.app_token", "");
+            slack_warn_channel = getString(root, "slack.warn_channel", "");
+            debug_mode = getBoolean(root, "debug", false);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Could not load config", e);
         }
 
         return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static String getString(Map<String, Object> root, String path, String def) {
+        Object v = getPath(root, path);
+        return v != null ? v.toString() : def;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean getBoolean(Map<String, Object> root, String path, boolean def) {
+        Object v = getPath(root, path);
+        if (v == null) return def;
+        if (v instanceof Boolean b) return b;
+        return Boolean.parseBoolean(v.toString());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object getPath(Map<String, Object> root, String path) {
+        String[] parts = path.split("\\.");
+        Map<String, Object> current = root;
+        for (int i = 0; i < parts.length - 1; i++) {
+            Object next = current.get(parts[i]);
+            if (!(next instanceof Map)) return null;
+            current = (Map<String, Object>) next;
+        }
+        return current.get(parts[parts.length - 1]);
     }
 
     public String getSlackBotToken() {
@@ -72,6 +97,7 @@ public class Config {
     public Boolean getDebugMode() {
         return debug_mode;
     }
+
     public void setDebugMode(Boolean debug_mode) {
         this.debug_mode = debug_mode;
     }
