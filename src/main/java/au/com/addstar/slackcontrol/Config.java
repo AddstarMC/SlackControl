@@ -13,7 +13,7 @@ public class Config {
     private String slack_bot_token;
     private String slack_app_token;
     private String slack_warn_channel;
-    private Boolean debug_mode = false;
+    private boolean debug_mode = false;
 
     public Config(SlackControl plugin) {
         this.plugin = plugin;
@@ -94,11 +94,11 @@ public class Config {
         return slack_warn_channel;
     }
 
-    public Boolean getDebugMode() {
+    public boolean getDebugMode() {
         return debug_mode;
     }
 
-    public void setDebugMode(Boolean debug_mode) {
+    public void setDebugMode(boolean debug_mode) {
         this.debug_mode = debug_mode;
     }
 }

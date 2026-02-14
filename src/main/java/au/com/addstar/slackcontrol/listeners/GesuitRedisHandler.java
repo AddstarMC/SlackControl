@@ -58,10 +58,16 @@ public class GesuitRedisHandler {
             return;
         }
 
+        String warnChannel = config.getSlackWarnChannel();
+        if (warnChannel == null || warnChannel.isBlank()) {
+            plugin.warnMsg("gesuit Redis: slack.warn_channel is not set; skipping notification.");
+            return;
+        }
+
         switch (channel) {
-            case CHANNEL_BAN -> handleBan(json, targetUsername, actionBy);
-            case CHANNEL_WARN -> handleWarn(json, targetUsername, actionBy);
-            case CHANNEL_UNBAN -> handleUnban(targetUsername, actionBy);
+            case CHANNEL_BAN -> handleBan(json, targetUsername, actionBy, warnChannel);
+            case CHANNEL_WARN -> handleWarn(json, targetUsername, actionBy, warnChannel);
+            case CHANNEL_UNBAN -> handleUnban(targetUsername, actionBy, warnChannel);
             default -> { }
         }
     }
@@ -75,7 +81,7 @@ public class GesuitRedisHandler {
         }
     }
 
-    private void handleBan(JsonObject json, String targetUsername, String actionBy) {
+    private void handleBan(JsonObject json, String targetUsername, String actionBy, String warnChannel) {
         String reason = getString(json, "reason");
         String type = getString(json, "type");
         String until = getString(json, "until");
@@ -110,10 +116,10 @@ public class GesuitRedisHandler {
             .fallback(fallback)
             .fields(fields)
             .build();
-        plugin.getSlackApp().sendChannelMessage(config.getSlackWarnChannel(), title, List.of(attachment));
+        plugin.getSlackApp().sendChannelMessage(warnChannel, title, List.of(attachment));
     }
 
-    private void handleWarn(JsonObject json, String targetUsername, String actionBy) {
+    private void handleWarn(JsonObject json, String targetUsername, String actionBy, String warnChannel) {
         String reason = getString(json, "reason");
         String warnCount = json.has("warnCount") ? json.get("warnCount").getAsString() : null;
         String action = getString(json, "action");
@@ -138,10 +144,10 @@ public class GesuitRedisHandler {
             .fallback(fallback)
             .fields(fields)
             .build();
-        plugin.getSlackApp().sendChannelMessage(config.getSlackWarnChannel(), title, List.of(attachment));
+        plugin.getSlackApp().sendChannelMessage(warnChannel, title, List.of(attachment));
     }
 
-    private void handleUnban(String targetUsername, String actionBy) {
+    private void handleUnban(String targetUsername, String actionBy, String warnChannel) {
         String title = String.format(":white_check_mark: *Unban:* `%s` has been unbanned by %s", targetUsername, actionBy);
         String fallback = String.format("UnbanNotice: %s has been unbanned by %s", targetUsername, actionBy);
 
@@ -150,6 +156,6 @@ public class GesuitRedisHandler {
             .fallback(fallback)
             .fields(List.of())
             .build();
-        plugin.getSlackApp().sendChannelMessage(config.getSlackWarnChannel(), title, List.of(attachment));
+        plugin.getSlackApp().sendChannelMessage(warnChannel, title, List.of(attachment));
     }
 }

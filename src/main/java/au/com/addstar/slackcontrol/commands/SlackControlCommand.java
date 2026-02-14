@@ -44,13 +44,22 @@ public class SlackControlCommand implements SimpleCommand {
         return invocation.source().hasPermission("slackcontrol.command");
     }
 
+    private static final List<String> SUBCOMMANDS = List.of("debug");
+
     @Override
     public List<String> suggest(Invocation invocation) {
+        String[] args = invocation.arguments();
+        if (args.length <= 1) {
+            String partial = args.length == 1 ? args[0].toLowerCase() : "";
+            return SUBCOMMANDS.stream()
+                .filter(cmd -> cmd.startsWith(partial))
+                .toList();
+        }
         return List.of();
     }
 
     @Override
     public CompletableFuture<List<String>> suggestAsync(Invocation invocation) {
-        return CompletableFuture.completedFuture(List.of());
+        return CompletableFuture.completedFuture(suggest(invocation));
     }
 }

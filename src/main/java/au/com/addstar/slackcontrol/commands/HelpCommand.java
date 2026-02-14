@@ -2,15 +2,12 @@ package au.com.addstar.slackcontrol.commands;
 import au.com.addstar.slackcontrol.SlackControl;
 import au.com.addstar.slackcontrol.objects.BotResponse;
 import au.com.addstar.slackcontrol.objects.UserCommand;
-import au.com.addstar.slackcontrol.utils.SlackUtils;
 import com.slack.api.model.block.*;
 import com.slack.api.model.block.composition.MarkdownTextObject;
 
-import static au.com.addstar.slackcontrol.utils.SlackUtils.makeSectionBlocks;
 import static au.com.addstar.slackcontrol.utils.SlackUtils.makeSectionBlock;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 
@@ -24,16 +21,16 @@ public class HelpCommand implements ISlackCommandHandler {
     public BotResponse commandHandler(String user, UserCommand cmd) {
         plugin.debugMsg("Help command called");
         BotResponse resp = new BotResponse();
-        List<LayoutBlock> blocks = new ArrayList<>();
+        resp.setText("Available bot commands");
 
         List<ContextBlockElement> elements = new ArrayList<>();
         elements.add(MarkdownTextObject.builder()
             .text(":information_source: *Available bot commands:*")
             .build());
-        resp.blocks.add(ContextBlock.builder().elements(elements).build());
-        resp.blocks.add(DividerBlock.builder().build());
+        resp.addBlock(ContextBlock.builder().elements(elements).build());
+        resp.addBlock(DividerBlock.builder().build());
 
-        resp.blocks.add(makeSectionBlock(
+        resp.addBlock(makeSectionBlock(
                 ":black_small_square: `help` - This help message\n" +
                 ":black_small_square: `who` - Show list of online players\n" +
                 ":black_small_square: `names <player>` - Show a player's name history\n" +
