@@ -1,5 +1,6 @@
 package au.com.addstar.slackcontrol.commands;
 
+import au.com.addstar.slackcontrol.PluginStats;
 import au.com.addstar.slackcontrol.SlackControl;
 import com.velocitypowered.api.command.SimpleCommand;
 import net.kyori.adventure.text.Component;
@@ -23,7 +24,7 @@ public class SlackControlCommand implements SimpleCommand {
 
         try {
             if (args.length == 0) {
-                source.sendMessage(Component.text("Expected sub command"));
+                source.sendMessage(Component.text("Expected sub command: debug, status"));
                 return;
             }
             switch (args[0].toLowerCase()) {
@@ -32,6 +33,7 @@ public class SlackControlCommand implements SimpleCommand {
                     plugin.getConfig().setDebugMode(newMode);
                     source.sendMessage(Component.text("SlackControl debug is " + newMode));
                 }
+                case "status" -> sendStatus(source);
                 default -> source.sendMessage(Component.text("Unknown sub command"));
             }
         } catch (Exception e) {
@@ -39,12 +41,41 @@ public class SlackControlCommand implements SimpleCommand {
         }
     }
 
+    private void sendStatus(com.velocitypowered.api.command.CommandSource source) {
+        PluginStats stats = plugin.getStats();
+        source.sendMessage(Component.text("SlackControl " + plugin.getVersion(), NamedTextColor.GOLD));
+        source.sendMessage(Component.empty());
+        source.sendMessage(Component.text("Slack connection: ", NamedTextColor.GRAY)
+            .append(Component.text(stats.isSlackConnected() ? "connected" : "disconnected",
+                stats.isSlackConnected() ? NamedTextColor.GREEN : NamedTextColor.RED)));
+        source.sendMessage(Component.text("Total commands from Slack: ", NamedTextColor.GRAY)
+            .append(Component.text(String.valueOf(stats.getTotalSlackCommands()), NamedTextColor.WHITE)));
+        if (stats.isSlackConnected() && stats.getConnectionAgeMillis() > 0) {
+            source.sendMessage(Component.text("Connection age: ", NamedTextColor.GRAY)
+                .append(Component.text(formatDuration(stats.getConnectionAgeMillis()), NamedTextColor.WHITE)));
+        }
+    }
+
+    private static String formatDuration(long millis) {
+        long secs = millis / 1000;
+        if (secs < 60) return secs + "s";
+        long mins = secs / 60;
+        secs %= 60;
+        if (mins < 60) return mins + "m " + secs + "s";
+        long hours = mins / 60;
+        mins %= 60;
+        if (hours < 24) return hours + "h " + mins + "m " + secs + "s";
+        long days = hours / 24;
+        hours %= 24;
+        return days + "d " + hours + "h " + mins + "m";
+    }
+
     @Override
     public boolean hasPermission(Invocation invocation) {
         return invocation.source().hasPermission("slackcontrol.command");
     }
 
-    private static final List<String> SUBCOMMANDS = List.of("debug");
+    private static final List<String> SUBCOMMANDS = List.of("debug", "status");
 
     @Override
     public List<String> suggest(Invocation invocation) {

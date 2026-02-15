@@ -17,7 +17,7 @@ import java.nio.file.Path;
 @Plugin(
     id = "slackcontrol",
     name = "SlackControl",
-    version = "2.0-SNAPSHOT",
+    version = GeneratedVersion.VERSION,
     description = "Slack integration for Velocity",
     authors = {"add5tar"},
     dependencies = {@Dependency(id = "redisbungee", optional = true)}
@@ -28,6 +28,7 @@ public class SlackControl {
     private final Logger logger;
     private final Path dataDirectory;
 
+    private final PluginStats stats = new PluginStats();
     private Config config;
     private SlackApp slackApp;
     private GesuitRedisHandler gesuitRedisHandler;
@@ -57,8 +58,7 @@ public class SlackControl {
             logger.info("SlackControl enabled.");
 
             server.getCommandManager().register(
-                server.getCommandManager().metaBuilder("!slackcontrol")
-                    .aliases("slackcontrol")
+                server.getCommandManager().metaBuilder("slackcontrol")
                     .plugin(this)
                     .build(),
                 new SlackControlCommand(this)
@@ -110,6 +110,14 @@ public class SlackControl {
 
     public SlackApp getSlackApp() {
         return slackApp;
+    }
+
+    public PluginStats getStats() {
+        return stats;
+    }
+
+    public String getVersion() {
+        return GeneratedVersion.VERSION;
     }
 
     public com.slack.api.methods.MethodsClient getMethodsClient() {

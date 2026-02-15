@@ -72,6 +72,7 @@ public class SlackApp {
             registerHandlers();
 
             app.command("/mcbot", (req, ctx) -> {
+                plugin.getStats().incrementSlackCommands();
                 plugin.logMsg("Received command"
                     + " from " + req.getPayload().getUserName()
                     + " in #" + req.getPayload().getChannelName()
@@ -84,6 +85,7 @@ public class SlackApp {
             });
 
             app.event(MessageEvent.class, (req, ctx) -> {
+                plugin.getStats().incrementSlackCommands();
                 String senderId = Objects.requireNonNullElse(
                     req.getEvent().getUser(),
                     Objects.requireNonNullElse(req.getEvent().getParentUserId(), "")
@@ -97,6 +99,7 @@ public class SlackApp {
             });
 
             app.event(AppMentionEvent.class, (req, ctx) -> {
+                plugin.getStats().incrementSlackCommands();
                 String senderId = Objects.toString(req.getEvent().getUser(), "");
                 String channelId = Objects.toString(req.getEvent().getChannel(), "");
                 String messageText = req.getEvent().getText();
@@ -120,6 +123,7 @@ public class SlackApp {
                 app
             );
             socketModeApp.startAsync();
+            plugin.getStats().markConnectionStarted();
 
             return true;
         } catch (Exception e) {
@@ -135,6 +139,7 @@ public class SlackApp {
     public void shutdown() {
         if (socketModeApp != null) {
             try {
+                plugin.getStats().markConnectionClosed();
                 socketModeApp.close();
             } catch (Exception e) {
                 plugin.warnMsg("Error closing Slack Socket Mode: " + e.getMessage());
