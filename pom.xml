@@ -6,10 +6,12 @@
 
     <groupId>au.com.addstar</groupId>
     <artifactId>SlackControl</artifactId>
-    <version>2.0.${buildNumber}-SNAPSHOT</version>
+    <version>${revision}${changelist}</version>
 
     <properties>
-        <!-- Jenkins: pass -DbuildNumber=$BUILD_NUMBER; local default 0 -->
+        <!-- CI-friendly version: revision is 2.0.<buildNumber>; Jenkins sets BUILD_NUMBER in env (see profile) or pass -DbuildNumber=N -->
+        <revision>2.0.${buildNumber}</revision>
+        <changelist>-SNAPSHOT</changelist>
         <buildNumber>0</buildNumber>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
@@ -34,6 +36,21 @@
             <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </repository>
     </repositories>
+
+    <profiles>
+        <!-- In Jenkins, BUILD_NUMBER is set by the job. Activate this profile so buildNumber is taken from env (no need to pass -DbuildNumber on the command line). -->
+        <profile>
+            <id>jenkins</id>
+            <activation>
+                <property>
+                    <name>env.BUILD_NUMBER</name>
+                </property>
+            </activation>
+            <properties>
+                <buildNumber>${env.BUILD_NUMBER}</buildNumber>
+            </properties>
+        </profile>
+    </profiles>
 
     <dependencies>
         <!-- Velocity API 3.4.0 -->
@@ -101,6 +118,24 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.5.0</version>
+                <configuration>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                    <updatePomFile>true</updatePomFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-antrun-plugin</artifactId>

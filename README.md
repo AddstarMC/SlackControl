@@ -20,7 +20,9 @@ Build with JDK 21 (required):
 JAVA_HOME=/path/to/jdk21 mvn clean package
 ```
 
-Output: `target/SlackControl-1.0-SNAPSHOT.jar`
+Output: `target/SlackControl-2.0.<buildNumber>-SNAPSHOT.jar` (e.g. `2.0.0-SNAPSHOT` locally).
+
+**Jenkins:** The build number is taken from the `BUILD_NUMBER` environment variable when set (no `-D` needed). Use goals `clean package` or `clean install` (not `build`). Optional: pass `-DbuildNumber=$BUILD_NUMBER` if your job doesn’t expose env to Maven.
 
 ## Install
 
@@ -35,11 +37,11 @@ See `config.yml` (created on first run):
 - `slack.bot_token` — Bot token (xoxb-…)
 - `slack.app_token` — App-level token for Socket Mode (xapp-…)
 - `slack.warn_channel` — Channel for ban/warn notifications (e.g. `#warns-bans`)
-- `debug` — Toggle debug logging (or use in-game: `!slackcontrol debug`)
+- `debug` — Toggle debug logging (or use in-game: `slackcontrol debug`)
 
 ## Commands
 
-- **In-game:** `!slackcontrol` (alias: `slackcontrol`) — e.g. `!slackcontrol debug`
+- **In-game:** `slackcontrol` (requires `slackcontrol.command`) — e.g. `slackcontrol debug`, `slackcontrol status`
 - **Slack:** Use `/mcbot` or DM/mention the app; supported: `who`, `help`, etc.
 
 ## geSuit integration (Redis / ValioBungee)
