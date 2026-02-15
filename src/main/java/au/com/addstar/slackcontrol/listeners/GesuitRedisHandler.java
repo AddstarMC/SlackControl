@@ -39,6 +39,9 @@ public class GesuitRedisHandler {
     @Subscribe
     public void onPubSubMessage(com.imaginarycode.minecraft.redisbungee.events.PubSubMessageEvent event) {
         String channel = event.getChannel();
+        if (!channel.equals(CHANNEL_BAN) && !channel.equals(CHANNEL_WARN) && !channel.equals(CHANNEL_UNBAN)) {
+            return;
+        }
         String message = event.getMessage();
         if (message == null || message.isEmpty()) return;
 
